@@ -94,7 +94,7 @@ class Indexer :
         output.write(data)
         zf = zipfile.ZipFile(output, mode='r')
         self.zipfile=zf
-        print zf
+  #      print zf
         il= zf.infolist()
         for zi in il :
             print "%s %s" % (fname,zi.filename)

@@ -2,9 +2,10 @@ use lib "../Archive--Zip--Streaming--Write";
 use lib "../Archive--Zip--Build";
 use Archive::Zip::Streaming::Write;
 my $file =shift;
+my $ofile =shift;
 
 my $fh;
-open($fh, ">test3.zip");
+open($fh, ">$ofile");
 my $z=Archive::Zip::Streaming::Write->new($fh);
 my ($filename,$mode) = ("test",777);
 

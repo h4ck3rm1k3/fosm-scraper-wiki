@@ -1,4 +1,4 @@
- 
+import zipfile 
 import mechanize
 import bz2
 def firstitem() : "xaaaa"
@@ -10,10 +10,7 @@ import struct
 from io import BytesIO
 import string
 import StringIO
-import zipfile
 import distutils.dir_util
-
-
 import tarfile
 from bs4 import BeautifulSoup
 
@@ -57,7 +54,11 @@ class Indexer :
         of=open ('%s/data.txt' % dirpath, 'w')        
         of.write(cmd)
         of.close()
+ 
+    def logdata(self,dirpath,val,cmd) :
+        self.of.write(cmd)
 
+ 
 #zip -0 -r /mnt/target/node_index/node_index.zip /mnt/target/index/
 
     def readnodes (self,fname,member,position,block, data) :    
@@ -72,8 +73,9 @@ class Indexer :
 #                dirpath= '/mnt/target/index/%s' % split                
                 dirpath= '/mnt/index/nodes/%s' % split                
                 cmd ="%s,%s,%s,%s\n"  % (fname,member,pos,value[0]);
-                self.addzip(dirpath,val,cmd)
+#                self.addzip(dirpath,val,cmd)
 #                self.adddata(dirpath,val,cmd)
+                self.logdata(dirpath,val,cmd)
 
                 pos=pos+4
             byte = f.read(4)
@@ -97,7 +99,7 @@ class Indexer :
   #      print zf
         il= zf.infolist()
         for zi in il :
-            print "%s %s" % (fname,zi.filename)
+            print("%s %s" % (fname,zi.filename))
             d = zf.open(zi)
             self.indexfile=d
             self.readindex (fname,zi.filename,position,block)
@@ -106,7 +108,7 @@ class Indexer :
     def onefile(self,str,fname) :
         self.fd=open (fname, 'w')
         self.fd2=open ("%s.html" % fname, 'w')
-        self.of=open ('%s.results' % fname , 'w')
+#        self.of=open ('%s.results' % fname , 'w')
         logger = logging.getLogger("mechanize")
         logger.addHandler(logging.StreamHandler(fd2))
         logger.setLevel(logging.DEBUG)        
@@ -118,16 +120,16 @@ class Indexer :
         block=x["block"];
         baseuri = "http://archive.org/download/fosm-20120401130001-" 
         uri_overview=  "%s%s/%s_index.zip" % (baseuri,name,name)
-        print uri_overview
+        print(uri_overview)
         br = mechanize.Browser()
         br.set_debug_http(True)
         br.set_debug_redirects(True)
         br.set_handle_robots(False)
         uri_listing=  "%s%s/" % (baseuri,name)        
-        print uri_listing
+        print(uri_listing)
         dataconn = br.open(uri_listing)
-        print dataconn.info
-        print dataconn.geturl
+        print(dataconn.info)
+        print(dataconn.geturl)
         datalisting = br.open(uri_listing).read()
         self.fd2.write(datalisting)
         soup = BeautifulSoup(datalisting)
@@ -136,7 +138,7 @@ class Indexer :
         self.rununzip(fname,position,block,data)
         self.fd.close()
         self.fd2.close()
-        self.of.close()
+#        self.of.close()
 
     def processfile(self,str,fname) :
         x = { "block" : 1, "position" : 1 , "name" : str }
@@ -158,19 +160,20 @@ class Indexer :
         data = []
         if (not os.path.isdir("cache")) :
             os.mkdir("cache");
-        print list(string.lowercase )
-        print string.lowercase
+        print(list(string.lowercase ))
+        print(string.lowercase)
 #        self.tar = tarfile.open("sample.tar", "w")
 #        self.tar2 = tarfile.open("sample2.tar", "w")
-        self.zip  = zipfile.ZipFile("sample.zip ",mode= "w")
+#        self.zip  = zipfile.ZipFile("sample.zip ",mode= "w")
 #        self.zip2 = zipfile.ZipFile("sample2.zip", mode="w")
 
+        self.of=open ('results.txt' , 'w')
 
         for l in list(string.lowercase ):
             for l2 in list(string.lowercase):
                 for l3 in list(string.lowercase) : 
                     str = 'xa%s%s%s' % (l,l2,l3)
-                    print str
+                    print(str)
                     if str == "xachz" :
                         return 
                     fname = "%s/%s"  % ( "cache", str )
@@ -182,13 +185,14 @@ class Indexer :
 #        self.tar.close()
 #        self.tar2.close()
 
-        self.zip.close()
+#        self.zip.close()
+        self.of.close()
 #        self.zip2.close()
 
  
 def main():
     
-    print "test"
+    print("test")
     
     #print genletters (lastitem())
  

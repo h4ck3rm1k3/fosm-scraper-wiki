@@ -21,46 +21,11 @@ import os
 
 class Indexer :
 
-    def addtar1(self,dirpath,val,cmd) :
-        string = StringIO.StringIO()
-        string.write(cmd)
-        string.seek(0)
-        info = tarfile.TarInfo(name=dirpath)
-        info.size=len(string.buf)
-        self.tar.addfile(tarinfo=info, fileobj=string)
-
-    def addtar2(self,dirpath,val,cmd) :
-        string = StringIO.StringIO()
-        string.write(cmd)
-        string.seek(0)
-        info = tarfile.TarInfo(name=dirpath)
-        info.size=len(string.buf)
-        self.tar.addfile(tarinfo=info, fileobj=string)
-        info.name=val #
-        string.seek(0)
-        self.tar2.addfile(tarinfo=info, fileobj=string)
-        self.zip.writestr(dirpath, cmd)
-        self.zip2.writestr(val, cmd)
-
-    def addzip(self,dirpath,val,cmd) :
-        self.zip.writestr(dirpath, cmd)
-
-    def addzip2(self,dirpath,val,cmd) :
-        self.zip2.writestr(val, cmd)
-
-
-    def adddata(self,dirpath,val,cmd) :
-        distutils.dir_util.mkpath(dirpath)
-        of=open ('%s/data.txt' % dirpath, 'w')        
-        of.write(cmd)
-        of.close()
- 
+    # write a line to the results.txt
     def logdata(self,dirpath,val,cmd) :
         self.of.write(cmd)
 
- 
-#zip -0 -r /mnt/target/node_index/node_index.zip /mnt/target/index/
-
+# this function unpacks a binary node idex, add the data to the results.txt
     def readnodes (self,fname,member,position,block, data) :    
         f = StringIO.StringIO(data)
         pos=0
@@ -70,13 +35,9 @@ class Indexer :
             if (value[0]>0) :
                 val = "%d" % value[0]
                 split = '/'.join(list(val))
-#                dirpath= '/mnt/target/index/%s' % split                
                 dirpath= '/mnt/index/nodes/%s' % split                
                 cmd ="%s,%s,%s,%s\n"  % (fname,member,pos,value[0]);
-#                self.addzip(dirpath,val,cmd)
-#                self.adddata(dirpath,val,cmd)
                 self.logdata(dirpath,val,cmd)
-
                 pos=pos+4
             byte = f.read(4)
 
@@ -89,14 +50,11 @@ class Indexer :
                 nodes=mytarfile.extractfile(member).read()
                 self.readnodes(fname,member,position,block,nodes)
 
-#        exit
-
     def rununzip(self,fname,position,block,data):
         output = StringIO.StringIO()
         output.write(data)
         zf = zipfile.ZipFile(output, mode='r')
         self.zipfile=zf
-  #      print zf
         il= zf.infolist()
         for zi in il :
             print("%s %s" % (fname,zi.filename))
@@ -104,14 +62,50 @@ class Indexer :
             self.indexfile=d
             self.readindex (fname,zi.filename,position,block)
 
+    def downloaddatafile(self,str,fname) :
+        self.fd=open ("%s.zip" % fname , 'w')
+#        self.fd2=open ("%s_data.html" % fname, 'w')
+#        logger = logging.getLogger("mechanize")
+#        logger.addHandler(logging.StreamHandler(self.fd2))
+#        logger.setLevel(logging.DEBUG)        
+        x = { "block" : 1, "position" : 1 , "name" : str }
+        block = x["block"]
+        position = x["position"]
+        name = x["name"];
+        position=x["position"];
+        block=x["block"];
+        baseuri = "http://archive.org/download/fosm-20120401130001-" 
+        uri_overview=  "%s%s/%s.zip" % (baseuri,name,name)
+        print(uri_overview)
+        br = mechanize.Browser()
+        br.set_debug_http(True)
+        br.set_debug_redirects(True)
+        br.set_handle_robots(False)
+        uri_listing=  "%s%s/" % (baseuri,name)        
+        print(uri_listing)
+        try :
+            dataconn = br.open(uri_listing)
+            print(dataconn.info)
+            print(dataconn.geturl)
+            datalisting = br.open(uri_listing).read()
+#            self.fd2.write(datalisting)
+            soup = BeautifulSoup(datalisting)
+            data = br.open(uri_overview).read()
+            self.fd.write(data)        
+#            self.rununzip(fname,position,block,data)
+        except:
+            print "error!"
 
-    def onefile(self,str,fname) :
+        self.fd.close()
+#        self.fd2.close()
+
+
+    def downloadindexfile(self,str,fname) :
         self.fd=open (fname, 'w')
-        self.fd2=open ("%s.html" % fname, 'w')
-#        self.of=open ('%s.results' % fname , 'w')
-        logger = logging.getLogger("mechanize")
-        logger.addHandler(logging.StreamHandler(fd2))
-        logger.setLevel(logging.DEBUG)        
+#        self.fd2=open ("%s.html" % fname, 'w')
+#        logger = logging.getLogger("mechanize")
+#        logger.addHandler(logging.StreamHandler(self.fd2))
+#        logger.setLevel(logging.DEBUG)        
         x = { "block" : 1, "position" : 1 , "name" : str }
         block = x["block"]
         position = x["position"]
@@ -127,20 +121,25 @@ class Indexer :
         br.set_handle_robots(False)
         uri_listing=  "%s%s/" % (baseuri,name)        
         print(uri_listing)
-        dataconn = br.open(uri_listing)
-        print(dataconn.info)
-        print(dataconn.geturl)
-        datalisting = br.open(uri_listing).read()
-        self.fd2.write(datalisting)
-        soup = BeautifulSoup(datalisting)
-        data = br.open(uri_overview).read()
-        self.fd.write(data)        
-        self.rununzip(fname,position,block,data)
-        self.fd.close()
-        self.fd2.close()
-#        self.of.close()
+        try :
+            dataconn = br.open(uri_listing)
+            print(dataconn.info)
+            print(dataconn.geturl)
+            datalisting = br.open(uri_listing).read()
+#            self.fd2.write(datalisting)
+            soup = BeautifulSoup(datalisting)
+            data = br.open(uri_overview).read()
+            self.fd.write(data)        
+            self.rununzip(fname,position,block,data)
+        except:
+            print "error! getting zip"
+            self.downloaddatafile(str,fname)
 
-    def processfile(self,str,fname) :
+
+        self.fd.close()
+#        self.fd2.close()
+
+    def processindexfile(self,str,fname) :
         x = { "block" : 1, "position" : 1 , "name" : str }
         block = x["block"]
         position = x["position"]
@@ -149,12 +148,10 @@ class Indexer :
         block=x["block"];
         baseuri = "http://archive.org/download/fosm-20120401130001-" 
         uri_overview=  "%s%s/%s_index.zip" % (baseuri,name,name)
-#        self.of=open ('%s.results' % fname , 'w')    
         self.fd = open(fname, "r")
         data = self.fd.read()
         self.rununzip(fname,position,block,data)
         self.fd.close()
-#        self.of.close()
 
     def process(self):
         data = []
@@ -162,12 +159,7 @@ class Indexer :
             os.mkdir("cache");
         print(list(string.lowercase ))
         print(string.lowercase)
-#        self.tar = tarfile.open("sample.tar", "w")
-#        self.tar2 = tarfile.open("sample2.tar", "w")
-#        self.zip  = zipfile.ZipFile("sample.zip ",mode= "w")
-#        self.zip2 = zipfile.ZipFile("sample2.zip", mode="w")
-
-        self.of=open ('results.txt' , 'w')
+        self.of=open ('results_new.txt' , 'w')
 
         for l in list(string.lowercase ):
             for l2 in list(string.lowercase):
@@ -178,26 +170,13 @@ class Indexer :
                         return 
                     fname = "%s/%s"  % ( "cache", str )
                     if (not os.path.isfile(fname)) :
-                        self.onefile(str,fname)
-                    if (not os.path.isfile('%s.results2' % fname)) :
-                        self.processfile(str,fname)
+                        self.downloadindexfile(str,fname)
                     
-#        self.tar.close()
-#        self.tar2.close()
-
-#        self.zip.close()
+                    self.processindexfile(str,fname)                    
         self.of.close()
-#        self.zip2.close()
-
  
-def main():
-    
-    print("test")
-    
-    #print genletters (lastitem())
- 
+def main():    
     i=Indexer()    
     i.process ()
-
  
 main()

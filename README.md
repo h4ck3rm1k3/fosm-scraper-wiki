@@ -4,6 +4,11 @@ fosm-scraper-wiki
 fosm-scraper-wiki
 
 
+splitlines.pl
+=================
+This program takes a osm file, looks for the id of a node, and creates a zip file full of node ids.
+
+
 See :
 http://docs.python.org/library/zipfile.html
 https://bitbucket.org/ScraperWiki/scraperwiki/wiki/LocalDevelopment

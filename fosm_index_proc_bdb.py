@@ -1,6 +1,7 @@
 import bz2
 import distutils.dir_util
 import io
+import re
 import os
 import string
 import struct
@@ -8,96 +9,91 @@ import sys
 import logging
 import tarfile  
 import zipfile 
+import dbm
 
-def firstitem() : "xaaaa"
-def lastitem() : "xachy"
-
+def lastitem() : "xachz"
 
 class Indexer :
 
-    # write a line to the results.txt
-    def logdata(self,dirpath,val,cmd) :
-        self.of.write(cmd)
+    def openDB(self):
+        self.dbBuckets = dbm.open('buckets', 'c') # bucket to url
+        self.dbBlocks = dbm.open('blocks', 'c') # block to bucket
+        self.dbNodes = dbm.open('nodes', 'c') # node id to block 
 
 # this function unpacks a binary node idex, add the data to the results.txt
-    def readnodes (self,fname,member, data) :    
+    def readnodes (self,bucketfilename,member, data, block) :    
         datalen = sys.getsizeof(data)
         f = io.BytesIO(data)
         pos=0
         byte = f.read(4)
+        count=0
         while byte != b'':
             len = sys.getsizeof(byte)
-            if len == 37 :
+ #           print("got len:%d byte:%s pos:%d datalen:%d" % (len, byte, pos, datalen ) )
+            if len == 37 or len == 44:
                 value = struct.unpack('i', byte)
                 if (value[0]>0) :
                     val = "%d" % value[0]
                     split = '/'.join(list(val))
                     dirpath= '/mnt/index/nodes/%s' % split                
-                    cmd ="%s,%s,%s,%s\n"  % (fname,member,pos,value[0]);
-                    self.logdata(dirpath,val,cmd)
-            else:
-                print("error, did not get 37 %d %s %d %d" % (len, byte, pos, datalen ) )
-
+                    self.dbNodes["%d" % value[0]]=block
+                    count = count + 1
+                    #print ("nodes %d -> %s" % (value[0],block))
+#            else:
+                #print("error, did not get 37 %d %s %d %d" % (len, byte, pos, datalen ) )
+#                break
             pos=pos+4
             byte = f.read(4)
+        #print ("%s %d" % (block, count))
 
-
-    def readindex(self,fname,zipfile):
+    def readindex(self,bucketfilename,zipfilename,block):
         data = self.indexfile.read()
         myfileobj = io.BytesIO(data)
         mytarfile = tarfile.open(mode="r:bz2", fileobj =myfileobj)
         for member in mytarfile.getnames():
             if member.endswith("node_ids.bin") :
                 nodes=mytarfile.extractfile(member).read()
-                self.readnodes(fname,member,nodes)
+                self.readnodes(bucketfilename,member,nodes,block)
 
-    def rununzip(self,fname):
-        zf = zipfile.ZipFile(fname, mode='r')
+    def rununzip(self,bucketfilename, bucketname):
+        zf = zipfile.ZipFile(bucketfilename, mode='r')
         self.zipfile=zf
         il= zf.infolist()
         for zi in il :
-            print("%s %s" % (fname,zi.filename))
+            m = re.search("\/(\d+)_i.tbz",zi.filename)
+            if (m):
+                block = m.group(1)
+                self.dbBlocks[block]=bucketname # block number -> bucketname
+                #print ("blocks %s -> %s" % (block,bucketname))
+            else:
+                print ("wtf:%s" % zi.filename)
             d = zf.open(zi)
             self.indexfile=d
-            self.readindex (fname,zi.filename)
-
-
-    def processindexfile(self,str,fname) :
-#        x = { "block" : 1, "position" : 1 , "name" : str }
-#        block = x["block"]
-#        position = x["position"]
-#        name = x["name"];
-#        position=x["position"];
-#        block=x["block"];
-#        self.fd = open(fname, "r")
-#        data = self.fd.read()
-        self.rununzip(fname)
-#        self.fd.close()
+            self.readindex (bucketfilename,zi.filename, block)
 
     def process(self):
         data = []
         if (not os.path.isdir("cache")) :
             os.mkdir("cache");
-
-        self.of=open ('results_new.txt' , 'w')
         letter_list = list(string.ascii_lowercase )
-
         for l in letter_list:
             for l2 in letter_list:
                 for l3 in letter_list: 
-                    str = 'xa%s%s%s' % (l,l2,l3)
-                    print(str)
-                    if str == "xachz" :
+                    bucketname = 'xa%s%s%s' % (l,l2,l3)
+                    print(bucketname)
+                    if bucketname == lastitem() :
                         return 
-                    fname = "%s/%s"  % ( "cache", str )
-                    if (not os.path.isfile(fname)) :
-                        print("missing data %s" % fname)
-                    
-                    self.processindexfile(str,fname)                    
-        self.of.close()
- 
+                    bucketfilename = "%s/%s"  % ( "cache", bucketname )
+                    if (not os.path.isfile(bucketfilename)) :
+                        print("missing data %s" % bucketfilename)
+                    self.dbBuckets[bucketname]=bucketfilename # bucket name -> filename 
+                    print ("bucket %s -> %s" % (bucketname,bucketfilename))
+                    print ("bucketname %s bucketfilename %s" % (bucketname, bucketfilename))
+                    self.rununzip(bucketfilename,bucketname)                 
+
 def main():    
     i=Indexer()    
+    i.openDB()
     i.process ()
  
 main()
